@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Starship Troopers - Space Shooter",
   description: "Mobile Infantry Space Shooter Game",
-    generator: 'v0.dev'
+    generator: 'Zeeshan8281'
 }
 
 export default function RootLayout({
