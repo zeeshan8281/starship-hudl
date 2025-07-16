@@ -4,25 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  MessageCircle,
-  Wallet,
-  Volume2,
-  VolumeX,
-  Pause,
-  Play,
-  RotateCcw,
-  Trophy,
-  Crown,
-  Home,
-  Calendar,
-  User,
-  LogOut,
-} from "lucide-react"
+import { Wallet, Volume2, VolumeX, Pause, Play, RotateCcw, Trophy, Crown, Home, Calendar, User } from "lucide-react"
 import Image from "next/image"
 import { createWalletClient, custom, createPublicClient, http, getContract } from "viem"
 import { huddle01Testnet } from "viem/chains"
-import { useSession, signIn, signOut } from "next-auth/react"
 
 interface GameObject {
   x: number
@@ -102,7 +87,6 @@ const LEADERBOARD_ABI = [
 const CONTRACT_ADDRESS = "0x5105404B431de314116A47de4b0daa74Ab966A8D" as `0x${string}`
 
 export default function Component() {
-  const { data: session, status } = useSession()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameLoopRef = useRef<number>()
   const [currentScreen, setCurrentScreen] = useState<"home" | "game">("home")
@@ -133,18 +117,16 @@ export default function Component() {
   const particlesRef = useRef<Particle[]>([])
   const keysRef = useRef<Set<string>>(new Set())
 
-  // Check if user is logged in (either Discord or Wallet)
+  // Check if user is logged in (wallet only)
   useEffect(() => {
-    if (session || walletAddress) {
+    if (walletAddress) {
       setIsLoggedIn(true)
-      if (session && !loginMethod) {
-        setLoginMethod("discord")
-      }
+      setLoginMethod("wallet")
     } else {
       setIsLoggedIn(false)
       setLoginMethod(null)
     }
-  }, [session, walletAddress, loginMethod])
+  }, [walletAddress])
 
   // Initialize Viem clients
   useEffect(() => {
@@ -166,7 +148,6 @@ export default function Component() {
     }
   }, [publicClient])
 
-  // Wallet connection using Viem
   const connectWallet = async () => {
     if (!window.ethereum) {
       alert("Please install MetaMask to connect your wallet!")
@@ -210,9 +191,7 @@ export default function Component() {
 
       setWalletClient(walletClient)
       setWalletAddress(accounts[0])
-      if (!session) {
-        setLoginMethod("wallet")
-      }
+      setLoginMethod("wallet")
       setIsLoggedIn(true)
 
       await loadPlayerBestScore(accounts[0])
@@ -222,14 +201,6 @@ export default function Component() {
     } finally {
       setIsConnecting(false)
     }
-  }
-
-  const handleDiscordLogin = () => {
-    signIn("discord", { callbackUrl: "/" })
-  }
-
-  const handleDiscordLogout = () => {
-    signOut({ callbackUrl: "/" })
   }
 
   // Smart contract interactions
@@ -294,7 +265,7 @@ export default function Component() {
         client: walletClient,
       })
 
-      const username = session?.user?.discordUsername || ""
+      const username = "" // Remove Discord username reference
       const hash = await contract.write.submitScore([BigInt(score), BigInt(level), username], {
         account: walletAddress as `0x${string}`,
       })
@@ -601,15 +572,6 @@ export default function Component() {
     }
   }, [gameState, gameLoop])
 
-  // Loading state
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white font-mono text-xl">LOADING MISSION CONTROL...</div>
-      </div>
-    )
-  }
-
   // Home Screen
   if (!isLoggedIn || currentScreen === "home") {
     return (
@@ -643,16 +605,8 @@ export default function Component() {
                 {!isLoggedIn ? (
                   <>
                     <div className="text-center mb-6">
-                      <p className="text-sm text-slate-300 mb-4 font-mono">CHOOSE AUTHENTICATION METHOD</p>
+                      <p className="text-sm text-slate-300 mb-4 font-mono">CONNECT YOUR WALLET TO CONTINUE</p>
                     </div>
-
-                    <Button
-                      onClick={handleDiscordLogin}
-                      className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white h-12 font-mono"
-                    >
-                      <MessageCircle className="mr-2 h-5 w-5" />
-                      LOGIN WITH DISCORD
-                    </Button>
 
                     <Button
                       onClick={connectWallet}
@@ -660,11 +614,11 @@ export default function Component() {
                       className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white h-12 font-mono"
                     >
                       <Wallet className="mr-2 h-5 w-5" />
-                      {isConnecting ? "CONNECTING..." : "CONNECT WALLET (LEADERBOARD)"}
+                      {isConnecting ? "CONNECTING..." : "CONNECT WALLET"}
                     </Button>
 
                     <div className="text-center pt-4">
-                      <p className="text-xs text-slate-400 font-mono">CONNECT WALLET TO SAVE HIGH SCORES</p>
+                      <p className="text-xs text-slate-400 font-mono">WALLET REQUIRED FOR LEADERBOARD</p>
                       <p className="text-xs text-slate-400 font-mono">SERVICE GUARANTEES CITIZENSHIP</p>
                     </div>
                   </>
@@ -672,57 +626,17 @@ export default function Component() {
                   <>
                     <div className="text-center mb-6">
                       <div className="space-y-2">
-                        {/* Discord Connection Status */}
-                        {session ? (
-                          <div className="flex items-center justify-center space-x-2">
-                            <Badge className="bg-[#5865F2] text-white font-mono">
-                              <MessageCircle className="w-3 h-3 mr-1" />
-                              {session.user?.discordUsername || session.user?.name}
+                        <Badge className="bg-green-600 text-white font-mono">
+                          <Wallet className="w-3 h-3 mr-1" />
+                          {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                        </Badge>
+                        {playerBestScore > 0 && (
+                          <div className="mt-2">
+                            <Badge className="bg-yellow-600 text-white font-mono">
+                              <Trophy className="w-3 h-3 mr-1" />
+                              BEST: {playerBestScore.toLocaleString()}
                             </Badge>
-                            <Button
-                              onClick={handleDiscordLogout}
-                              variant="ghost"
-                              size="sm"
-                              className="text-slate-400 hover:text-white"
-                            >
-                              <LogOut className="w-3 h-3" />
-                            </Button>
                           </div>
-                        ) : (
-                          <Button
-                            onClick={handleDiscordLogin}
-                            className="bg-[#5865F2] hover:bg-[#4752C4] text-white font-mono"
-                          >
-                            <MessageCircle className="mr-2 h-4 w-4" />
-                            CONNECT DISCORD
-                          </Button>
-                        )}
-
-                        {/* Wallet Connection Status */}
-                        {walletAddress ? (
-                          <div>
-                            <Badge className="bg-green-600 text-white font-mono">
-                              <Wallet className="w-3 h-3 mr-1" />
-                              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                            </Badge>
-                            {playerBestScore > 0 && (
-                              <div className="mt-2">
-                                <Badge className="bg-yellow-600 text-white font-mono">
-                                  <Trophy className="w-3 h-3 mr-1" />
-                                  BEST: {playerBestScore.toLocaleString()}
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <Button
-                            onClick={connectWallet}
-                            disabled={isConnecting}
-                            className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-mono"
-                          >
-                            <Wallet className="mr-2 h-4 w-4" />
-                            {isConnecting ? "CONNECTING..." : "CONNECT WALLET"}
-                          </Button>
                         )}
                       </div>
                     </div>
@@ -736,7 +650,6 @@ export default function Component() {
                       <p>ARROW KEYS OR WASD: MOVE</p>
                       <p>SPACEBAR: SHOOT</p>
                       <p>ELIMINATE ALL BUGS!</p>
-                      {!walletAddress && <p className="text-yellow-400 mt-2">CONNECT WALLET TO SAVE HIGH SCORES</p>}
                     </div>
                   </>
                 )}
@@ -813,7 +726,7 @@ export default function Component() {
       {/* Header */}
       <div className="w-full max-w-6xl mb-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button onClick={goHome} variant="outline" size="sm" className="font-mono">
+          <Button onClick={goHome} variant="outline" size="sm" className="font-mono bg-transparent">
             <Home className="h-4 w-4 mr-1" />
             HOME
           </Button>
@@ -825,8 +738,7 @@ export default function Component() {
 
         <div className="flex items-center space-x-4">
           <Badge className="bg-green-600 text-white font-mono">
-            {session?.user?.discordUsername ||
-              (walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "TROOPER ALPHA-7")}
+            {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "TROOPER ALPHA-7"}
           </Badge>
           {walletAddress && playerBestScore > 0 && (
             <Badge className="bg-yellow-600 text-white font-mono">
@@ -864,18 +776,18 @@ export default function Component() {
 
             <div className="flex space-x-2">
               {gameState === "playing" && (
-                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono">
+                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono bg-transparent">
                   <Pause className="h-4 w-4 mr-1" />
                   PAUSE
                 </Button>
               )}
               {gameState === "paused" && (
-                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono">
+                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono bg-transparent">
                   <Play className="h-4 w-4 mr-1" />
                   RESUME
                 </Button>
               )}
-              <Button onClick={resetGame} variant="outline" size="sm" className="font-mono">
+              <Button onClick={resetGame} variant="outline" size="sm" className="font-mono bg-transparent">
                 <RotateCcw className="h-4 w-4 mr-1" />
                 RESET
               </Button>
@@ -940,7 +852,11 @@ export default function Component() {
                     <Button onClick={startGame} className="bg-red-600 hover:bg-red-700 font-mono text-lg px-8 py-3">
                       RETRY MISSION
                     </Button>
-                    <Button onClick={resetGame} variant="outline" className="font-mono text-lg px-8 py-3">
+                    <Button
+                      onClick={resetGame}
+                      variant="outline"
+                      className="font-mono text-lg px-8 py-3 bg-transparent"
+                    >
                       MAIN MENU
                     </Button>
                   </div>
