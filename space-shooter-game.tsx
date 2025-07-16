@@ -726,8 +726,8 @@ export default function Component() {
       {/* Header */}
       <div className="w-full max-w-6xl mb-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button onClick={goHome} variant="outline" size="sm" className="font-mono bg-transparent">
-            <Home className="h-4 w-4 mr-1" />
+          <Button onClick={goHome} variant="outline" size="sm" className="font-mono">
+            <Home className="h-4 w-4 mr-1 text-blue-500" />
             HOME
           </Button>
           <Image src="/huddle01-logo.png" alt="HUDDLE01" width={120} height={36} className="h-8 w-auto" />
@@ -754,6 +754,14 @@ export default function Component() {
           >
             {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
           </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="text-white bg-blue-600 hover:bg-blue-700 font-mono rounded-md px-3 py-1"
+            onClick={() => window.open('https://testnet.huddle01.com/', '_blank')}
+          >
+            POWERED BY THE Huddle01 Testnet!
+          </Button>
         </div>
       </div>
 
@@ -776,19 +784,19 @@ export default function Component() {
 
             <div className="flex space-x-2">
               {gameState === "playing" && (
-                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono bg-transparent">
-                  <Pause className="h-4 w-4 mr-1" />
+                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono bg-blue-500" color="blue">
+                  <Pause className="h-4 w-4 mr-1 text-white" />
                   PAUSE
                 </Button>
               )}
               {gameState === "paused" && (
-                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono bg-transparent">
-                  <Play className="h-4 w-4 mr-1" />
+                <Button onClick={pauseGame} variant="outline" size="sm" className="font-mono bg-blue-500" color="blue">
+                  <Play className="h-4 w-4 mr-1 text-white" />
                   RESUME
                 </Button>
               )}
-              <Button onClick={resetGame} variant="outline" size="sm" className="font-mono bg-transparent">
-                <RotateCcw className="h-4 w-4 mr-1" />
+              <Button onClick={resetGame} variant="outline" size="sm" className="font-mono bg-blue-500" >
+                <RotateCcw className="h-4 w-4 mr-1 text-white" />
                 RESET
               </Button>
             </div>
