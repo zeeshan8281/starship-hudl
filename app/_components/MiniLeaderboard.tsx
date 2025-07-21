@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Crown, Users, Star, Gift } from "lucide-react"
+import { Crown, Users, Star, Gift } from "lucide-react"
 import { PlayerStats, GameStats } from "../_types/game"
 
 interface EffectiveScoreEntry {
@@ -33,7 +33,7 @@ export default function MiniLeaderboard({
       <CardHeader>
         <CardTitle className="text-white font-mono flex items-center justify-between">
           <div className="flex items-center">
-            <Trophy className="mr-2 h-5 w-5 text-yellow-400" />
+            {/* Trophy icon removed as requested */}
             TOP TROOPERS
           </div>
           <Badge variant="outline" className="border-green-400 text-green-300 font-mono text-xs">
