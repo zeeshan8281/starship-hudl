@@ -37,55 +37,116 @@ interface Particle extends GameObject {
 interface LeaderboardEntry {
   address: string
   score: number
-  level: number
   timestamp: number
-  discordUsername: string
 }
 
-// Smart contract ABI
+// Smart contract ABI from Remix
+
+// Fix for window.ethereum type error (MetaMask)
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 const LEADERBOARD_ABI = [
+  { "inputs": [], "name": "InvalidInput", "type": "error" },
+  { "inputs": [], "name": "NotHigherScore", "type": "error" },
   {
-    inputs: [
-      { internalType: "uint256", name: "_score", type: "uint256" },
-      { internalType: "uint256", name: "_level", type: "uint256" },
-      { internalType: "string", name: "_discordUsername", type: "string" },
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "player", "type": "address" },
+      { "indexed": false, "internalType": "uint64", "name": "score", "type": "uint64" },
+      { "indexed": false, "internalType": "uint32", "name": "level", "type": "uint32" },
+      { "indexed": false, "internalType": "uint64", "name": "timestamp", "type": "uint64" }
     ],
-    name: "submitScore",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
+    "name": "ScoreSubmitted",
+    "type": "event"
   },
   {
-    inputs: [],
-    name: "getTopScores",
-    outputs: [
+    "inputs": [
+      { "internalType": "uint64", "name": "_score", "type": "uint64" },
+      { "internalType": "uint32", "name": "_level", "type": "uint32" }
+    ],
+    "name": "submitScore",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "start", "type": "uint256" },
+      { "internalType": "uint256", "name": "howMany", "type": "uint256" }
+    ],
+    "name": "getPage",
+    "outputs": [
       {
-        components: [
-          { internalType: "address", name: "player", type: "address" },
-          { internalType: "uint256", name: "score", type: "uint256" },
-          { internalType: "uint256", name: "level", type: "uint256" },
-          { internalType: "uint256", name: "timestamp", type: "uint256" },
-          { internalType: "string", name: "discordUsername", type: "string" },
+        "components": [
+          { "internalType": "address", "name": "player", "type": "address" },
+          { "internalType": "uint64", "name": "score", "type": "uint64" },
+          { "internalType": "uint32", "name": "level", "type": "uint32" },
+          { "internalType": "uint64", "name": "timestamp", "type": "uint64" }
         ],
-        internalType: "struct StarshipTroopersLeaderboard.ScoreEntry[]",
-        name: "",
-        type: "tuple[]",
-      },
+        "internalType": "struct StarshipTroopersLeaderboard.ScoreEntry[]",
+        "name": "page",
+        "type": "tuple[]"
+      }
     ],
-    stateMutability: "view",
-    type: "function",
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [{ internalType: "address", name: "_player", type: "address" }],
-    name: "getPlayerBestScore",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
+    "inputs": [],
+    "name": "getTop20",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "player", "type": "address" },
+          { "internalType": "uint64", "name": "score", "type": "uint64" },
+          { "internalType": "uint32", "name": "level", "type": "uint32" },
+          { "internalType": "uint64", "name": "timestamp", "type": "uint64" }
+        ],
+        "internalType": "struct StarshipTroopersLeaderboard.ScoreEntry[]",
+        "name": "top",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
+  {
+    "inputs": [],
+    "name": "leaderboardSize",
+    "outputs": [
+      { "internalType": "uint8", "name": "", "type": "uint8" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_LEADERBOARD_SIZE",
+    "outputs": [
+      { "internalType": "uint8", "name": "", "type": "uint8" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "playerBest",
+    "outputs": [
+      { "internalType": "address", "name": "player", "type": "address" },
+      { "internalType": "uint64", "name": "score", "type": "uint64" },
+      { "internalType": "uint32", "name": "level", "type": "uint32" },
+      { "internalType": "uint64", "name": "timestamp", "type": "uint64" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
 ] as const
-
-const CONTRACT_ADDRESS = "0x5105404B431de314116A47de4b0daa74Ab966A8D" as `0x${string}`
-
+const CONTRACT_ADDRESS = "0x2fCA448814b5A10c99dBB3FC99B1EfD342e10a30" as `0x${string}`
 export default function Component() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameLoopRef = useRef<number>()
@@ -208,41 +269,55 @@ export default function Component() {
     if (!publicClient) return
 
     try {
-      const contract = getContract({
+      // Use Viem's readContract for reading leaderboard
+      const topScores = await publicClient.readContract({
         address: CONTRACT_ADDRESS,
         abi: LEADERBOARD_ABI,
-        client: publicClient,
-      })
-
-      const topScores = await contract.read.getTopScores()
-      const formattedScores: LeaderboardEntry[] = topScores.map((entry: any) => ({
-        address: entry.player,
-        score: Number(entry.score),
-        level: Number(entry.level),
-        timestamp: Number(entry.timestamp),
-        discordUsername: entry.discordUsername || "",
-      }))
-
-      setLeaderboard(formattedScores)
+        functionName: "getTop20",
+        args: [],
+        gas: BigInt(500000),
+      });
+      // Map to best score per address
+      const scoreMap = new Map<string, LeaderboardEntry>();
+      for (const entry of topScores) {
+        const addr = entry.player.toLowerCase();
+        const score = Number(entry.score);
+        if (!scoreMap.has(addr) || score > scoreMap.get(addr)!.score) {
+          scoreMap.set(addr, {
+            address: entry.player,
+            score,
+            timestamp: Number(entry.timestamp),
+          });
+        }
+      }
+      // Only best score per address
+      const formattedScores: LeaderboardEntry[] = Array.from(scoreMap.values());
+      setLeaderboard(formattedScores);
     } catch (error) {
-      console.error("Failed to load leaderboard:", error)
+      console.error("Failed to load leaderboard:", error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
     }
   }
 
+  // Load best score for player using playerBest mapping
   const loadPlayerBestScore = async (address: string) => {
-    if (!publicClient) return
-
+    if (!publicClient) return;
     try {
-      const contract = getContract({
+      // Use Viem's readContract for playerBest mapping
+      const bestEntry = await publicClient.readContract({
         address: CONTRACT_ADDRESS,
         abi: LEADERBOARD_ABI,
-        client: publicClient,
-      })
-
-      const bestScore = await contract.read.getPlayerBestScore([address as `0x${string}`])
-      setPlayerBestScore(Number(bestScore))
+        functionName: "playerBest",
+        args: [address as `0x${string}`],
+      });
+      // bestEntry: [player, score, level, timestamp]
+      setPlayerBestScore(Number(bestEntry[1]));
     } catch (error) {
-      console.error("Failed to load player best score:", error)
+      console.error("Failed to load player best score:", error);
+      setPlayerBestScore(0);
     }
   }
 
@@ -257,31 +332,27 @@ export default function Component() {
       return
     }
 
-    setIsSubmittingScore(true)
+    setIsSubmittingScore(true);
     try {
-      const contract = getContract({
+      // Use Viem's writeContract for submitting score
+      const hash = await walletClient.writeContract({
         address: CONTRACT_ADDRESS,
         abi: LEADERBOARD_ABI,
-        client: walletClient,
-      })
-
-      const username = "" // Remove Discord username reference
-      const hash = await contract.write.submitScore([BigInt(score), BigInt(level), username], {
+        functionName: "submitScore",
+        args: [BigInt(score), Number(level)],
         account: walletAddress as `0x${string}`,
-      })
+      });
 
-      await publicClient.waitForTransactionReceipt({ hash })
-
-      await loadLeaderboard()
-      await loadPlayerBestScore(walletAddress)
-      setCanSubmitScore(false)
-
-      alert(`New high score submitted to blockchain! Score: ${score.toLocaleString()}`)
+      await publicClient.waitForTransactionReceipt({ hash });
+      await loadLeaderboard();
+      await loadPlayerBestScore(walletAddress);
+      setCanSubmitScore(false);
+      alert(`New high score submitted to blockchain! Score: ${score.toLocaleString()}`);
     } catch (error) {
-      console.error("Failed to submit score:", error)
-      alert("Failed to submit score to blockchain. Please try again.")
+      console.error("Failed to submit score:", error);
+      alert("Failed to submit score to blockchain. Please try again.");
     } finally {
-      setIsSubmittingScore(false)
+      setIsSubmittingScore(false);
     }
   }
 
@@ -646,6 +717,20 @@ export default function Component() {
                       START MISSION
                     </Button>
 
+                    <Button
+                      onClick={() => {
+                        setWalletAddress("");
+                        setIsLoggedIn(false);
+                        setLoginMethod(null);
+                        setLeaderboard([]);
+                        setPlayerBestScore(0);
+                      }}
+                      className="w-full mt-4 bg-gray-700 hover:bg-gray-800 text-white font-mono h-12"
+                    >
+                      <Wallet className="mr-2 h-5 w-5" />
+                      DISCONNECT WALLET
+                    </Button>
+
                     <div className="mt-6 text-center text-sm text-slate-300 font-mono">
                       <p>ARROW KEYS OR WASD: MOVE</p>
                       <p>SPACEBAR: SHOOT</p>
@@ -672,44 +757,37 @@ export default function Component() {
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {leaderboard.slice(0, 20).map((entry, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-center justify-between p-3 rounded-lg ${
-                          entry.address.toLowerCase() === walletAddress.toLowerCase()
-                            ? "bg-yellow-900/30 border border-yellow-500/30"
-                            : "bg-slate-700/50"
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-mono text-sm">
-                            {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
-                          </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              {entry.discordUsername ? (
-                                <div className="flex items-center space-x-1">
-                                  <User className="w-3 h-3 text-blue-400" />
-                                  <p className="text-white font-mono text-sm">{entry.discordUsername}</p>
-                                </div>
-                              ) : (
-                                <p className="text-white font-mono text-sm">
-                                  {entry.address.slice(0, 6)}...{entry.address.slice(-4)}
-                                </p>
-                              )}
+                    {leaderboard
+                      .sort((a, b) => b.score - a.score)
+                      .slice(0, 20)
+                      .map((entry, index) => (
+                        <div
+                          key={index}
+                          className={`flex items-center justify-between p-3 rounded-lg ${
+                            entry.address.toLowerCase() === walletAddress.toLowerCase()
+                              ? "bg-yellow-900/30 border border-yellow-500/30"
+                              : "bg-slate-700/50"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-mono text-sm">
+                              {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
                             </div>
-                            <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
-                              <Calendar className="w-3 h-3" />
-                              <span>{new Date(entry.timestamp * 1000).toLocaleDateString()}</span>
-                              <span>LVL {entry.level}</span>
+                            <div>
+                              <p className="text-white font-mono text-sm">
+                                {entry.address.slice(0, 6)}...{entry.address.slice(-4)}
+                              </p>
+                              <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
+                                <Calendar className="w-3 h-3" />
+                                <span>{new Date(entry.timestamp * 1000).toLocaleDateString()}</span>
+                              </div>
                             </div>
                           </div>
+                          <div className="text-right">
+                            <p className="text-green-400 font-mono text-sm font-bold">{entry.score.toLocaleString()}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-green-400 font-mono text-sm font-bold">{entry.score.toLocaleString()}</p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 )}
               </CardContent>
@@ -795,7 +873,7 @@ export default function Component() {
                   RESUME
                 </Button>
               )}
-              <Button onClick={resetGame} variant="outline" size="sm" className="font-mono bg-blue-500" >
+              <Button onClick={resetGame} variant="outline" size="sm" className="font-mono bg-blue-500">
                 <RotateCcw className="h-4 w-4 mr-1 text-white" />
                 RESET
               </Button>
@@ -842,11 +920,16 @@ export default function Component() {
                   <p className="text-xl mb-2">FINAL SCORE: {score.toLocaleString()}</p>
                   <p className="text-lg mb-4">LEVEL REACHED: {level}</p>
 
+                  {/* Only show NEW HIGH SCORE if score is strictly greater than playerBestScore */}
                   {canSubmitScore && score > playerBestScore && (
                     <div className="mb-6">
                       <p className="text-green-400 mb-4 text-lg">NEW HIGH SCORE!</p>
                       <Button
-                        onClick={submitScoreToBlockchain}
+                        onClick={async () => {
+                          await submitScoreToBlockchain();
+                          // After submitting, reload best score to ensure UI is correct
+                          await loadPlayerBestScore(walletAddress);
+                        }}
                         disabled={isSubmittingScore || !walletAddress}
                         className="bg-yellow-600 hover:bg-yellow-700 font-mono text-lg px-8 py-3 mr-4"
                       >
@@ -855,6 +938,8 @@ export default function Component() {
                       </Button>
                     </div>
                   )}
+
+                  {/* If not a new high score, do not show the message or button */}
 
                   <div className="space-x-4">
                     <Button onClick={startGame} className="bg-red-600 hover:bg-red-700 font-mono text-lg px-8 py-3">
@@ -909,12 +994,10 @@ export default function Component() {
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-mono text-sm">
                           {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
                         </div>
-                        <div>
-                          <p className="text-white font-mono text-sm">
-                            {entry.discordUsername || `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`}
-                          </p>
-                          <p className="text-slate-400 font-mono text-xs">LVL {entry.level}</p>
-                        </div>
+                        <p className="text-white font-mono text-sm">
+                          {`${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`}
+                        </p>
+                        {/* Removed level from leaderboard entry */}
                       </div>
                       <div className="text-right">
                         <p className="text-green-400 font-mono text-sm">{entry.score.toLocaleString()}</p>
