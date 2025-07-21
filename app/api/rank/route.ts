@@ -1,32 +1,26 @@
+import { ABI } from "../../utils/abi"
+import { CONTRACT_ADDRESS } from "@/app/utils/constants"
 import { type NextRequest, NextResponse } from "next/server"
-import { createPublicClient, http, getContract } from "viem"
+import { createPublicClient, http } from "viem"
 import { huddle01Testnet } from "viem/chains"
 
-// Smart contract ABI - only need the getTopScores function
-const LEADERBOARD_ABI = [
-  {
-    inputs: [],
-    name: "getTopScores",
-    outputs: [
-      {
-        components: [
-          { internalType: "address", name: "player", type: "address" },
-          { internalType: "uint256", name: "score", type: "uint256" },
-          { internalType: "uint256", name: "level", type: "uint256" },
-          { internalType: "uint256", name: "timestamp", type: "uint256" },
-          { internalType: "string", name: "discordUsername", type: "string" },
-        ],
-        internalType: "struct StarshipTroopersLeaderboard.ScoreEntry[]",
-        name: "",
-        type: "tuple[]",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const
+// Interface matching the contract's EffectiveScoreEntry struct
+interface EffectiveScoreEntry {
+  player: string
+  rawScore: number
+  effectiveScore: number
+  level: number
+  timestamp: number
+  referralCount: number
+}
 
-const CONTRACT_ADDRESS = "0x5105404B431de314116A47de4b0daa74Ab966A8D" as `0x${string}`
+// Interface for player stats
+interface PlayerStats {
+  bestScore: number
+  totalSubmissions: number
+  referralCount: number
+  effectiveScore: number
+}
 
 // Initialize public client
 const publicClient = createPublicClient({
@@ -49,51 +43,116 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid wallet address format" }, { status: 400 })
     }
 
-    // Get contract instance
-    const contract = getContract({
+    // Fetch top 20 scores using the contract's getTop20() function
+    const topScores = await publicClient.readContract({
       address: CONTRACT_ADDRESS,
-      abi: LEADERBOARD_ABI,
-      client: publicClient,
+      abi: ABI,
+      functionName: "getTop20",
+      args: [],
     })
 
-    // Fetch top scores from contract
-    const topScores = await contract.read.getTopScores()
+    console.log("Top 20 scores from contract:", topScores)
 
-    // Convert to a more manageable format
-    const leaderboard = topScores.map((entry: any, index: number) => ({
-      rank: index + 1,
-      address: entry.player.toLowerCase(),
-      score: Number(entry.score),
+    // Convert the contract response to our interface
+    const leaderboard: EffectiveScoreEntry[] = topScores.map((entry: any, index: number) => ({
+      player: entry.player.toLowerCase(),
+      rawScore: Number(entry.rawScore),
+      effectiveScore: Number(entry.effectiveScore),
       level: Number(entry.level),
       timestamp: Number(entry.timestamp),
-      discordUsername: entry.discordUsername || "",
+      referralCount: Number(entry.referralCount),
+    }))
+
+    // Add rank to each entry
+    const leaderboardWithRanks = leaderboard.map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
     }))
 
     // Find the rank of the requested wallet address
     const normalizedAddress = walletAddress.toLowerCase()
-    const playerEntry = leaderboard.find((entry) => entry.address === normalizedAddress)
+    const playerEntry = leaderboardWithRanks.find((entry) => entry.player === normalizedAddress)
 
     if (!playerEntry) {
+      // Check if player has any score but not in top 20
+      try {
+        // Get comprehensive player stats using getMyStats
+        const playerStats = await publicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: ABI,
+          functionName: "getMyStats",
+          args: [walletAddress as `0x${string}`],
+        })
+
+        const [bestScore, totalSubmissions, referralCount] = playerStats
+
+        if (Number(bestScore) > 0) {
+          // Player has scores but not in top 20 - get their actual rank
+          const playerRank = await publicClient.readContract({
+            address: CONTRACT_ADDRESS,
+            abi: ABI,
+            functionName: "getPlayerRank",
+            args: [walletAddress as `0x${string}`],
+          })
+
+          // Get effective score
+          const effectiveScore = await publicClient.readContract({
+            address: CONTRACT_ADDRESS,
+            abi: ABI,
+            functionName: "getEffectiveScore",
+            args: [walletAddress as `0x${string}`],
+          })
+
+          const playerStatsFormatted: PlayerStats = {
+            bestScore: Number(bestScore),
+            totalSubmissions: Number(totalSubmissions),
+            referralCount: Number(referralCount),
+            effectiveScore: Number(effectiveScore)
+          }
+
+          return NextResponse.json({
+            found: true,
+            inTop20: false,
+            rank: Number(playerRank),
+            rawScore: playerStatsFormatted.bestScore,
+            effectiveScore: playerStatsFormatted.effectiveScore,
+            referralCount: playerStatsFormatted.referralCount,
+            totalSubmissions: playerStatsFormatted.totalSubmissions,
+            totalPlayers: leaderboardWithRanks.length,
+            address: walletAddress,
+            leaderboard: leaderboardWithRanks,
+          })
+        }
+      } catch (statsError) {
+        console.error("Error fetching player stats:", statsError)
+      }
+
       return NextResponse.json({
         found: false,
+        inTop20: false,
         rank: null,
-        totalPlayers: leaderboard.length,
+        totalPlayers: leaderboardWithRanks.length,
         message: "Address not found in leaderboard",
+        leaderboard: leaderboardWithRanks,
       })
     }
 
+    // Player is in top 20
     return NextResponse.json({
       found: true,
+      inTop20: true,
       rank: playerEntry.rank,
-      score: playerEntry.score,
+      rawScore: playerEntry.rawScore,
+      effectiveScore: playerEntry.effectiveScore,
       level: playerEntry.level,
-      discordUsername: playerEntry.discordUsername,
+      referralCount: playerEntry.referralCount,
       timestamp: playerEntry.timestamp,
-      totalPlayers: leaderboard.length,
+      totalPlayers: leaderboardWithRanks.length,
       address: walletAddress,
+      leaderboard: leaderboardWithRanks,
     })
   } catch (error) {
-    console.error("Error fetching rank:", error)
+    console.error("Error fetching leaderboard:", error)
 
     // Handle specific contract errors
     if (error instanceof Error) {
@@ -104,86 +163,12 @@ export async function GET(request: NextRequest) {
       if (error.message.includes("network")) {
         return NextResponse.json({ error: "Network connection failed" }, { status: 503 })
       }
-    }
 
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-// Optional: Add POST method for batch rank queries
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { addresses } = body
-
-    // Validate input
-    if (!Array.isArray(addresses) || addresses.length === 0) {
-      return NextResponse.json({ error: "Array of addresses is required" }, { status: 400 })
-    }
-
-    // Limit batch size to prevent abuse
-    if (addresses.length > 50) {
-      return NextResponse.json({ error: "Maximum 50 addresses allowed per batch" }, { status: 400 })
-    }
-
-    // Validate all addresses
-    for (const address of addresses) {
-      if (!address.match(/^0x[a-fA-F0-9]{40}$/)) {
-        return NextResponse.json({ error: `Invalid address format: ${address}` }, { status: 400 })
+      if (error.message.includes("timeout")) {
+        return NextResponse.json({ error: "Request timeout - please try again" }, { status: 408 })
       }
     }
 
-    // Get contract instance
-    const contract = getContract({
-      address: CONTRACT_ADDRESS,
-      abi: LEADERBOARD_ABI,
-      client: publicClient,
-    })
-
-    // Fetch top scores from contract
-    const topScores = await contract.read.getTopScores()
-
-    // Convert to a more manageable format
-    const leaderboard = topScores.map((entry: any, index: number) => ({
-      rank: index + 1,
-      address: entry.player.toLowerCase(),
-      score: Number(entry.score),
-      level: Number(entry.level),
-      timestamp: Number(entry.timestamp),
-      discordUsername: entry.discordUsername || "",
-    }))
-
-    // Find ranks for all requested addresses
-    const results = addresses.map((address) => {
-      const normalizedAddress = address.toLowerCase()
-      const playerEntry = leaderboard.find((entry) => entry.address === normalizedAddress)
-
-      if (!playerEntry) {
-        return {
-          address,
-          found: false,
-          rank: null,
-          message: "Address not found in leaderboard",
-        }
-      }
-
-      return {
-        address,
-        found: true,
-        rank: playerEntry.rank,
-        score: playerEntry.score,
-        level: playerEntry.level,
-        discordUsername: playerEntry.discordUsername,
-        timestamp: playerEntry.timestamp,
-      }
-    })
-
-    return NextResponse.json({
-      totalPlayers: leaderboard.length,
-      results,
-    })
-  } catch (error) {
-    console.error("Error fetching batch ranks:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

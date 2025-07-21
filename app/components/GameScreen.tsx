@@ -1,16 +1,16 @@
-// components/GameScreen.tsx
+// components/GameScreen.tsx (Updated with enhanced player stats)
 "use client"
 
 import { MutableRefObject } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Home, Volume2, VolumeX, Trophy } from "lucide-react"
+import { Home, Volume2, VolumeX, Trophy, Users, Gift } from "lucide-react"
 import Image from "next/image"
 import GameHUD from "./GameHUD"
 import GameCanvas from "./GameCanvas"
 import GameOverlay from "./GameOverlay"
 import MiniLeaderboard from "./MiniLeaderboard"
-import { GameObject, Bullet, Enemy, Particle, GameState, LeaderboardEntry } from "../types/game"
+import { GameObject, Bullet, Enemy, Particle, GameState, LeaderboardEntry, PlayerStats, GameStats, EffectiveScoreEntry } from "../types/game"
 
 interface GameScreenProps {
   // Game state
@@ -24,8 +24,9 @@ interface GameScreenProps {
   
   // User data
   walletAddress: string
-  playerBestScore: number
-  leaderboard: LeaderboardEntry[]
+  playerStats: PlayerStats
+  gameStats: GameStats
+  leaderboard: EffectiveScoreEntry[]
   
   // Game refs
   playerRef: MutableRefObject<GameObject>
@@ -56,7 +57,8 @@ export default function GameScreen({
   canSubmitScore,
   isSubmittingScore,
   walletAddress,
-  playerBestScore,
+  playerStats,
+  gameStats,
   leaderboard,
   playerRef,
   bulletsRef,
@@ -93,12 +95,31 @@ export default function GameScreen({
           <Badge className="bg-green-600 text-white font-mono">
             {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "TROOPER ALPHA-7"}
           </Badge>
-          {walletAddress && playerBestScore > 0 && (
-            <Badge className="bg-yellow-600 text-white font-mono">
-              <Trophy className="w-3 h-3 mr-1" />
-              BEST: {playerBestScore.toLocaleString()}
-            </Badge>
+          
+          {/* Enhanced player stats display */}
+          {walletAddress && playerStats.bestScore > 0 && (
+            <div className="flex space-x-2">
+              <Badge className="bg-yellow-600 text-white font-mono">
+                <Trophy className="w-3 h-3 mr-1" />
+                BEST: {playerStats.bestScore.toLocaleString()}
+              </Badge>
+              
+              {playerStats.referralCount > 0 && (
+                <Badge className="bg-purple-600 text-white font-mono">
+                  <Users className="w-3 h-3 mr-1" />
+                  {playerStats.referralCount} REFS
+                </Badge>
+              )}
+              
+              {playerStats.effectiveScore > playerStats.bestScore && (
+                <Badge className="bg-gradient-to-r from-purple-600 to-yellow-600 text-white font-mono">
+                  <Gift className="w-3 h-3 mr-1" />
+                  EFF: {playerStats.effectiveScore.toLocaleString()}
+                </Badge>
+              )}
+            </div>
           )}
+          
           <Button
             variant="ghost"
             size="icon"
@@ -153,7 +174,7 @@ export default function GameScreen({
               level={level}
               canSubmitScore={canSubmitScore}
               isSubmittingScore={isSubmittingScore}
-              playerBestScore={playerBestScore}
+              playerBestScore={playerStats.bestScore}
               walletAddress={walletAddress}
               onStart={onStartGame}
               onPause={onPauseGame}
@@ -165,6 +186,9 @@ export default function GameScreen({
           {/* Instructions */}
           <div className="mt-4 text-center text-slate-400 font-mono text-sm">
             <p>CONTROLS: WASD/ARROWS = MOVE • SPACEBAR = SHOOT • MOBILE INFANTRY DEPLOYED</p>
+            {playerStats.referralCount > 0 && (
+              <p className="text-purple-400">REFERRAL BONUS: +{playerStats.referralCount * 100} EFFECTIVE POINTS</p>
+            )}
           </div>
         </div>
 
@@ -172,7 +196,9 @@ export default function GameScreen({
         <div className="w-80">
           <MiniLeaderboard 
             leaderboard={leaderboard} 
-            currentUserAddress={walletAddress} 
+            currentUserAddress={walletAddress}
+            playerStats={playerStats}
+            gameStats={gameStats}
           />
         </div>
       </div>

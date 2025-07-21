@@ -1,4 +1,4 @@
-// components/StarshipTroopers.tsx
+// components/StarshipTroopers.tsx (Updated with referral system)
 "use client"
 
 import { useState, useEffect } from "react"
@@ -12,6 +12,7 @@ import { LoginMethod } from "../types/game"
 export default function StarshipTroopers() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null)
+  const [referrerAddress, setReferrerAddress] = useState<string>("")
 
   // Custom hooks
   const {
@@ -52,11 +53,25 @@ export default function StarshipTroopers() {
   const {
     leaderboard,
     playerBestScore,
+    playerStats,
+    gameStats,
     isSubmittingScore,
+    referralCode,
     loadLeaderboard,
-    loadPlayerBestScore,
-    submitScoreToBlockchain
+    loadPlayerStats,
+    loadGameStats,
+    submitScoreToBlockchain,
+    parseReferralCode
   } = useLeaderboard(publicClient, walletClient, walletAddress)
+
+  // Parse referral code from URL on component mount
+  useEffect(() => {
+    const referral = parseReferralCode()
+    if (referral) {
+      setReferrerAddress(referral)
+      console.log("Referral code detected:", referral)
+    }
+  }, [])
 
   // Check if user is logged in (wallet only)
   useEffect(() => {
@@ -73,7 +88,8 @@ export default function StarshipTroopers() {
   const handleConnectWallet = async () => {
     await connectWallet()
     if (walletAddress) {
-      await loadPlayerBestScore(walletAddress)
+      await loadPlayerStats(walletAddress)
+      await loadGameStats()
     }
   }
 
@@ -84,14 +100,33 @@ export default function StarshipTroopers() {
     setLoginMethod(null)
   }
 
-  // Enhanced score submission handler
+  // Enhanced score submission handler with referral support
   const handleSubmitScore = async () => {
-    const success = await submitScoreToBlockchain(score, level)
+    const success = await submitScoreToBlockchain(score, level, referrerAddress)
     if (success) {
       setCanSubmitScore(false)
-      // Reload player best score to ensure UI is correct
-      await loadPlayerBestScore(walletAddress)
+      // Reload player stats to ensure UI is correct
+      await Promise.all([
+        loadPlayerStats(walletAddress),
+        loadGameStats(),
+        loadLeaderboard()
+      ])
+      
+      // Clear referrer after first successful submission
+      if (referrerAddress) {
+        setReferrerAddress("")
+        // Update URL to remove referral parameter
+        const url = new URL(window.location.href)
+        url.searchParams.delete('ref')
+        window.history.replaceState({}, '', url.toString())
+      }
     }
+  }
+
+  // Handle referral link copying
+  const handleCopyReferralLink = () => {
+    // You can add analytics or notifications here
+    console.log("Referral link copied!")
   }
 
   // Show home screen if not logged in or on home screen
@@ -101,11 +136,14 @@ export default function StarshipTroopers() {
         isLoggedIn={isLoggedIn}
         isConnecting={isConnecting}
         walletAddress={walletAddress}
-        playerBestScore={playerBestScore}
+        playerStats={playerStats}
+        gameStats={gameStats}
         leaderboard={leaderboard}
+        referralCode={referralCode}
         onConnectWallet={handleConnectWallet}
         onDisconnectWallet={handleDisconnectWallet}
         onStartGame={startGame}
+        onCopyReferralLink={handleCopyReferralLink}
       />
     )
   }
@@ -121,7 +159,8 @@ export default function StarshipTroopers() {
       canSubmitScore={canSubmitScore}
       isSubmittingScore={isSubmittingScore}
       walletAddress={walletAddress}
-      playerBestScore={playerBestScore}
+      playerStats={playerStats}
+      gameStats={gameStats}
       leaderboard={leaderboard}
       playerRef={playerRef}
       bulletsRef={bulletsRef}

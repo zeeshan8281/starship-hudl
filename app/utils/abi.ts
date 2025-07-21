@@ -1,6 +1,202 @@
 export const ABI = [
 	{
 		"inputs": [],
+		"name": "forceLeaderboardUpdate",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getGameStats",
+		"outputs": [
+			{
+				"internalType": "uint64",
+				"name": "highScore",
+				"type": "uint64"
+			},
+			{
+				"internalType": "address",
+				"name": "champion",
+				"type": "address"
+			},
+			{
+				"internalType": "uint64",
+				"name": "totalSubmissions",
+				"type": "uint64"
+			},
+			{
+				"internalType": "uint8",
+				"name": "uniquePlayers",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint64",
+				"name": "averageTopScore",
+				"type": "uint64"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "start",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "howMany",
+				"type": "uint256"
+			}
+		],
+		"name": "getPage",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "address",
+						"name": "player",
+						"type": "address"
+					},
+					{
+						"internalType": "uint64",
+						"name": "score",
+						"type": "uint64"
+					},
+					{
+						"internalType": "uint32",
+						"name": "level",
+						"type": "uint32"
+					},
+					{
+						"internalType": "uint64",
+						"name": "timestamp",
+						"type": "uint64"
+					}
+				],
+				"internalType": "struct StarshipTroopersLeaderboard.ScoreEntry[]",
+				"name": "page",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			}
+		],
+		"name": "getPlayerRank",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "rank",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "centerRank",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint8",
+				"name": "radius",
+				"type": "uint8"
+			}
+		],
+		"name": "getScoresAroundRank",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "address",
+						"name": "player",
+						"type": "address"
+					},
+					{
+						"internalType": "uint64",
+						"name": "score",
+						"type": "uint64"
+					},
+					{
+						"internalType": "uint32",
+						"name": "level",
+						"type": "uint32"
+					},
+					{
+						"internalType": "uint64",
+						"name": "timestamp",
+						"type": "uint64"
+					}
+				],
+				"internalType": "struct StarshipTroopersLeaderboard.ScoreEntry[]",
+				"name": "entries",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getTop20",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "address",
+						"name": "player",
+						"type": "address"
+					},
+					{
+						"internalType": "uint64",
+						"name": "rawScore",
+						"type": "uint64"
+					},
+					{
+						"internalType": "uint64",
+						"name": "effectiveScore",
+						"type": "uint64"
+					},
+					{
+						"internalType": "uint32",
+						"name": "level",
+						"type": "uint32"
+					},
+					{
+						"internalType": "uint64",
+						"name": "timestamp",
+						"type": "uint64"
+					},
+					{
+						"internalType": "uint32",
+						"name": "referralCount",
+						"type": "uint32"
+					}
+				],
+				"internalType": "struct StarshipTroopersLeaderboard.EffectiveScoreEntry[]",
+				"name": "top",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "InvalidInput",
 		"type": "error"
 	},
@@ -96,8 +292,51 @@ export const ABI = [
 		"type": "event"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "uint64",
+				"name": "_score",
+				"type": "uint64"
+			},
+			{
+				"internalType": "uint32",
+				"name": "_level",
+				"type": "uint32"
+			},
+			{
+				"internalType": "address",
+				"name": "_referrer",
+				"type": "address"
+			}
+		],
+		"name": "submitScore",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
-		"name": "MAX_LEADERBOARD_SIZE",
+		"name": "updateLeaderboard",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "allTimeHighScore",
+		"outputs": [
+			{
+				"internalType": "uint64",
+				"name": "",
+				"type": "uint64"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "BATCH_SIZE",
 		"outputs": [
 			{
 				"internalType": "uint8",
@@ -110,12 +349,12 @@ export const ABI = [
 	},
 	{
 		"inputs": [],
-		"name": "allTimeHighScore",
+		"name": "cachedLeaderboardSize",
 		"outputs": [
 			{
-				"internalType": "uint64",
+				"internalType": "uint8",
 				"name": "",
-				"type": "uint64"
+				"type": "uint8"
 			}
 		],
 		"stateMutability": "view",
@@ -147,39 +386,6 @@ export const ABI = [
 			{
 				"internalType": "uint64",
 				"name": "effectiveScore",
-				"type": "uint64"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getGameStats",
-		"outputs": [
-			{
-				"internalType": "uint64",
-				"name": "highScore",
-				"type": "uint64"
-			},
-			{
-				"internalType": "address",
-				"name": "champion",
-				"type": "address"
-			},
-			{
-				"internalType": "uint64",
-				"name": "totalSubmissions",
-				"type": "uint64"
-			},
-			{
-				"internalType": "uint8",
-				"name": "uniquePlayers",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint64",
-				"name": "averageTopScore",
 				"type": "uint64"
 			}
 		],
@@ -247,71 +453,6 @@ export const ABI = [
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "start",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "howMany",
-				"type": "uint256"
-			}
-		],
-		"name": "getPage",
-		"outputs": [
-			{
-				"components": [
-					{
-						"internalType": "address",
-						"name": "player",
-						"type": "address"
-					},
-					{
-						"internalType": "uint64",
-						"name": "score",
-						"type": "uint64"
-					},
-					{
-						"internalType": "uint32",
-						"name": "level",
-						"type": "uint32"
-					},
-					{
-						"internalType": "uint64",
-						"name": "timestamp",
-						"type": "uint64"
-					}
-				],
-				"internalType": "struct StarshipTroopersLeaderboard.ScoreEntry[]",
-				"name": "page",
-				"type": "tuple[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "player",
-				"type": "address"
-			}
-		],
-		"name": "getPlayerRank",
-		"outputs": [
-			{
-				"internalType": "uint8",
-				"name": "rank",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
 				"internalType": "uint8",
 				"name": "count",
 				"type": "uint8"
@@ -370,46 +511,13 @@ export const ABI = [
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "uint8",
-				"name": "centerRank",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint8",
-				"name": "radius",
-				"type": "uint8"
-			}
-		],
-		"name": "getScoresAroundRank",
+		"inputs": [],
+		"name": "leaderboardNeedsUpdate",
 		"outputs": [
 			{
-				"components": [
-					{
-						"internalType": "address",
-						"name": "player",
-						"type": "address"
-					},
-					{
-						"internalType": "uint64",
-						"name": "score",
-						"type": "uint64"
-					},
-					{
-						"internalType": "uint32",
-						"name": "level",
-						"type": "uint32"
-					},
-					{
-						"internalType": "uint64",
-						"name": "timestamp",
-						"type": "uint64"
-					}
-				],
-				"internalType": "struct StarshipTroopersLeaderboard.ScoreEntry[]",
-				"name": "entries",
-				"type": "tuple[]"
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
@@ -417,34 +525,12 @@ export const ABI = [
 	},
 	{
 		"inputs": [],
-		"name": "getTop20",
+		"name": "leaderboardStatus",
 		"outputs": [
 			{
-				"components": [
-					{
-						"internalType": "address",
-						"name": "player",
-						"type": "address"
-					},
-					{
-						"internalType": "uint64",
-						"name": "score",
-						"type": "uint64"
-					},
-					{
-						"internalType": "uint32",
-						"name": "level",
-						"type": "uint32"
-					},
-					{
-						"internalType": "uint64",
-						"name": "timestamp",
-						"type": "uint64"
-					}
-				],
-				"internalType": "struct StarshipTroopersLeaderboard.ScoreEntry[]",
-				"name": "top",
-				"type": "tuple[]"
+				"internalType": "bool",
+				"name": "needsUpdate",
+				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
@@ -452,7 +538,7 @@ export const ABI = [
 	},
 	{
 		"inputs": [],
-		"name": "leaderboardSize",
+		"name": "MAX_LEADERBOARD_SIZE",
 		"outputs": [
 			{
 				"internalType": "uint8",
@@ -536,26 +622,16 @@ export const ABI = [
 		"type": "function"
 	},
 	{
-		"inputs": [
+		"inputs": [],
+		"name": "topScoresCount",
+		"outputs": [
 			{
-				"internalType": "uint64",
-				"name": "_score",
-				"type": "uint64"
-			},
-			{
-				"internalType": "uint32",
-				"name": "_level",
-				"type": "uint32"
-			},
-			{
-				"internalType": "address",
-				"name": "_referrer",
-				"type": "address"
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
 			}
 		],
-		"name": "submitScore",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{

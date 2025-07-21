@@ -17,7 +17,17 @@ contract StarshipTroopersLeaderboard {
         uint64 timestamp; // 8 bytes
     } // 40 bytes → 1 storage slot
 
+    struct EffectiveScoreEntry {
+        address player;
+        uint64 rawScore;
+        uint64 effectiveScore; // rawScore + (referrals * 100)
+        uint32 level;
+        uint64 timestamp;
+        uint32 referralCount;
+    }
+
     uint8 public constant MAX_LEADERBOARD_SIZE = 100;
+    uint8 public constant BATCH_SIZE = 10; // Process leaderboard in smaller batches
 
     /* Mapping: every wallet → its personal best */
     mapping(address => ScoreEntry) public playerBest;
@@ -28,9 +38,14 @@ contract StarshipTroopersLeaderboard {
     /* Mapping: every wallet → referral count (how many people they referred) */
     mapping(address => uint32) public playerReferralCount;
 
-    /* Fixed-size array: global top-100 (sorted desc) */
-    ScoreEntry[MAX_LEADERBOARD_SIZE] private leaderboard;
-    uint8 public leaderboardSize; // current filled length
+    /* Unsorted array of top scores - we sort on read, not write */
+    ScoreEntry[MAX_LEADERBOARD_SIZE] private topScores;
+    uint8 public topScoresCount; // current filled length
+
+    /* Cached sorted leaderboard - updated lazily */
+    ScoreEntry[MAX_LEADERBOARD_SIZE] private cachedLeaderboard;
+    uint8 public cachedLeaderboardSize;
+    bool public leaderboardNeedsUpdate;
 
     // Additional tracking variables
     uint64 public totalScoresSubmitted;
@@ -85,68 +100,32 @@ contract StarshipTroopersLeaderboard {
             );
         }
 
-        // update personal best
+        // Create new entry
         ScoreEntry memory newEntry = ScoreEntry({
             player: msg.sender,
             score: _score,
             level: _level,
             timestamp: uint64(block.timestamp)
         });
+
+        // Update personal best
         playerBest[msg.sender] = newEntry;
 
-        // increment counters
+        // Increment counters
         unchecked {
             ++playerSubmissionCount[msg.sender];
             ++totalScoresSubmitted;
         }
 
-        // check for new all-time high
+        // Check for new all-time high
         if (_score > allTimeHighScore) {
             allTimeHighScore = _score;
             championPlayer = msg.sender;
             emit NewChampion(msg.sender, _score, _level);
         }
 
-        /* ---- insert into leaderboard ---- */
-        uint8 len = leaderboardSize;
-        uint64 effectiveScore = _score +
-            (uint64(playerReferralCount[msg.sender]) * 100);
-
-        // quick gate: reject if board full and worse than last slot
-        if (len == MAX_LEADERBOARD_SIZE) {
-            uint64 lastEffectiveScore = leaderboard[len - 1].score +
-                (uint64(playerReferralCount[leaderboard[len - 1].player]) *
-                    100);
-            if (effectiveScore <= lastEffectiveScore) {
-                emit ScoreSubmitted(
-                    msg.sender,
-                    _score,
-                    _level,
-                    uint64(block.timestamp)
-                );
-                return;
-            }
-        }
-
-        // grow length if board not yet full
-        if (len < MAX_LEADERBOARD_SIZE) {
-            unchecked {
-                leaderboardSize = len + 1;
-            }
-        }
-
-        // walk backwards & shift based on effective score
-        uint8 i = leaderboardSize - 1;
-        while (i > 0) {
-            uint64 prevEffectiveScore = leaderboard[i - 1].score +
-                (uint64(playerReferralCount[leaderboard[i - 1].player]) * 100);
-            if (prevEffectiveScore >= effectiveScore) break;
-            leaderboard[i] = leaderboard[i - 1];
-            unchecked {
-                --i;
-            }
-        }
-        leaderboard[i] = newEntry;
+        // Add to top scores using simple replacement strategy
+        _addToTopScores(newEntry);
 
         emit ScoreSubmitted(
             msg.sender,
@@ -154,6 +133,89 @@ contract StarshipTroopersLeaderboard {
             _level,
             uint64(block.timestamp)
         );
+    }
+
+    /// @notice Internal function to add score to top scores array
+    function _addToTopScores(ScoreEntry memory newEntry) private {
+        uint64 effectiveScore = newEntry.score +
+            (uint64(playerReferralCount[newEntry.player]) * 100);
+
+        // If array isn't full, just add it
+        if (topScoresCount < MAX_LEADERBOARD_SIZE) {
+            topScores[topScoresCount] = newEntry;
+            unchecked {
+                ++topScoresCount;
+            }
+            leaderboardNeedsUpdate = true;
+            return;
+        }
+
+        // Find the worst score in current top scores
+        uint8 worstIndex = 0;
+        uint64 worstEffectiveScore = topScores[0].score +
+            (uint64(playerReferralCount[topScores[0].player]) * 100);
+
+        for (uint8 i = 1; i < MAX_LEADERBOARD_SIZE; ++i) {
+            uint64 currentEffective = topScores[i].score +
+                (uint64(playerReferralCount[topScores[i].player]) * 100);
+            if (currentEffective < worstEffectiveScore) {
+                worstEffectiveScore = currentEffective;
+                worstIndex = i;
+            }
+        }
+
+        // Replace worst score if new score is better
+        if (effectiveScore > worstEffectiveScore) {
+            topScores[worstIndex] = newEntry;
+            leaderboardNeedsUpdate = true;
+        }
+    }
+
+    /// @notice Update the cached sorted leaderboard
+    function updateLeaderboard() external {
+        if (!leaderboardNeedsUpdate) return;
+
+        _sortLeaderboard();
+        leaderboardNeedsUpdate = false;
+    }
+
+    /// @notice Internal sorting function using insertion sort (efficient for small arrays)
+    function _sortLeaderboard() private {
+        // Copy topScores to cachedLeaderboard
+        for (uint8 i = 0; i < topScoresCount; ++i) {
+            cachedLeaderboard[i] = topScores[i];
+        }
+        cachedLeaderboardSize = topScoresCount;
+
+        // Insertion sort by effective score (descending)
+        for (uint8 i = 1; i < cachedLeaderboardSize; ++i) {
+            ScoreEntry memory key = cachedLeaderboard[i];
+            uint64 keyEffective = key.score +
+                (uint64(playerReferralCount[key.player]) * 100);
+
+            uint8 j = i;
+            while (j > 0) {
+                uint64 prevEffective = cachedLeaderboard[j - 1].score +
+                    (uint64(
+                        playerReferralCount[cachedLeaderboard[j - 1].player]
+                    ) * 100);
+                if (prevEffective >= keyEffective) break;
+
+                cachedLeaderboard[j] = cachedLeaderboard[j - 1];
+                unchecked {
+                    --j;
+                }
+            }
+            cachedLeaderboard[j] = key;
+        }
+    }
+
+    /// @notice Auto-update leaderboard if needed (gas-limited)
+    function _ensureLeaderboardUpdated() private {
+        if (leaderboardNeedsUpdate) {
+            _sortLeaderboard();
+            leaderboardNeedsUpdate = false;
+        }
     }
 
     /* ----------  Read Functions  ---------- */
@@ -164,9 +226,11 @@ contract StarshipTroopersLeaderboard {
     function getPage(
         uint256 start,
         uint256 howMany
-    ) external view returns (ScoreEntry[] memory page) {
+    ) external returns (ScoreEntry[] memory page) {
+        _ensureLeaderboardUpdated();
+
         uint256 end = start + howMany;
-        uint256 size = leaderboardSize;
+        uint256 size = cachedLeaderboardSize;
 
         if (start >= size) return new ScoreEntry[](0);
         if (end > size) end = size;
@@ -175,15 +239,30 @@ contract StarshipTroopersLeaderboard {
         page = new ScoreEntry[](len);
 
         for (uint256 j = 0; j < len; ++j) {
-            page[j] = leaderboard[start + j];
+            page[j] = cachedLeaderboard[start + j];
         }
     }
 
-    /// @notice Convenience helper: top 20 snapshot.
-    function getTop20() external view returns (ScoreEntry[] memory top) {
-        uint8 cap = leaderboardSize > 20 ? 20 : leaderboardSize;
-        top = new ScoreEntry[](cap);
-        for (uint8 k = 0; k < cap; ++k) top[k] = leaderboard[k];
+    /// @notice Convenience helper: top 20 snapshot with effective scores.
+    function getTop20() external returns (EffectiveScoreEntry[] memory top) {
+        _ensureLeaderboardUpdated();
+        uint8 cap = cachedLeaderboardSize > 20 ? 20 : cachedLeaderboardSize;
+        top = new EffectiveScoreEntry[](cap);
+
+        for (uint8 k = 0; k < cap; ++k) {
+            ScoreEntry memory entry = cachedLeaderboard[k];
+            uint32 referrals = playerReferralCount[entry.player];
+            uint64 effective = entry.score + (uint64(referrals) * 100);
+
+            top[k] = EffectiveScoreEntry({
+                player: entry.player,
+                rawScore: entry.score,
+                effectiveScore: effective,
+                level: entry.level,
+                timestamp: entry.timestamp,
+                referralCount: referrals
+            });
+        }
     }
 
     /// @notice Get your personal best score and submission count.
@@ -208,14 +287,15 @@ contract StarshipTroopersLeaderboard {
         referralCount = playerReferralCount[player];
     }
 
-    /* ----------  NEW UTILITY FUNCTIONS  ---------- */
+    /* ----------  UTILITY FUNCTIONS  ---------- */
 
     /// @notice Find a player's current rank on the leaderboard (1-indexed, 0 = not on board)
     /// @param player The address to look for
     /// @return rank Position on leaderboard (1 = first place, 0 = not ranked)
-    function getPlayerRank(address player) external view returns (uint8 rank) {
-        for (uint8 i = 0; i < leaderboardSize; ++i) {
-            if (leaderboard[i].player == player) {
+    function getPlayerRank(address player) external returns (uint8 rank) {
+        _ensureLeaderboardUpdated();
+        for (uint8 i = 0; i < cachedLeaderboardSize; ++i) {
+            if (cachedLeaderboard[i].player == player) {
                 return i + 1; // 1-indexed
             }
         }
@@ -229,21 +309,23 @@ contract StarshipTroopersLeaderboard {
     function getScoresAroundRank(
         uint8 centerRank,
         uint8 radius
-    ) external view returns (ScoreEntry[] memory entries) {
-        if (centerRank == 0 || centerRank > leaderboardSize) {
+    ) external returns (ScoreEntry[] memory entries) {
+        _ensureLeaderboardUpdated();
+
+        if (centerRank == 0 || centerRank > cachedLeaderboardSize) {
             return new ScoreEntry[](0);
         }
 
         uint8 start = centerRank > radius + 1 ? centerRank - radius - 1 : 0;
-        uint8 end = centerRank + radius > leaderboardSize
-            ? leaderboardSize
+        uint8 end = centerRank + radius > cachedLeaderboardSize
+            ? cachedLeaderboardSize
             : centerRank + radius;
 
         uint8 len = end - start;
         entries = new ScoreEntry[](len);
 
         for (uint8 i = 0; i < len; ++i) {
-            entries[i] = leaderboard[start + i];
+            entries[i] = cachedLeaderboard[start + i];
         }
     }
 
@@ -255,7 +337,6 @@ contract StarshipTroopersLeaderboard {
     /// @return averageTopScore Average of current top 10 scores
     function getGameStats()
         external
-        view
         returns (
             uint64 highScore,
             address champion,
@@ -264,17 +345,21 @@ contract StarshipTroopersLeaderboard {
             uint64 averageTopScore
         )
     {
+        _ensureLeaderboardUpdated();
+
         highScore = allTimeHighScore;
         champion = championPlayer;
         totalSubmissions = totalScoresSubmitted;
-        uniquePlayers = leaderboardSize;
+        uniquePlayers = cachedLeaderboardSize;
 
         // Calculate average of top 10 (or all if less than 10)
-        uint8 topCount = leaderboardSize > 10 ? 10 : leaderboardSize;
+        uint8 topCount = cachedLeaderboardSize > 10
+            ? 10
+            : cachedLeaderboardSize;
         if (topCount > 0) {
             uint256 sum = 0;
             for (uint8 i = 0; i < topCount; ++i) {
-                sum += leaderboard[i].score;
+                sum += cachedLeaderboard[i].score;
             }
             averageTopScore = uint64(sum / topCount);
         }
@@ -293,30 +378,35 @@ contract StarshipTroopersLeaderboard {
             (uint64(playerReferralCount[playerAddress]) * 100);
 
         // If board isn't full, any valid score makes it
-        if (leaderboardSize < MAX_LEADERBOARD_SIZE) {
+        if (topScoresCount < MAX_LEADERBOARD_SIZE) {
             wouldMakeIt = true;
         } else {
-            // Check if better than worst effective score on full board
-            uint64 lastEffectiveScore = leaderboard[leaderboardSize - 1].score +
-                (uint64(
-                    playerReferralCount[leaderboard[leaderboardSize - 1].player]
-                ) * 100);
-            wouldMakeIt = effectiveScore > lastEffectiveScore;
+            // Find worst effective score in current top scores
+            uint64 worstEffective = type(uint64).max;
+            for (uint8 i = 0; i < MAX_LEADERBOARD_SIZE; ++i) {
+                uint64 currentEffective = topScores[i].score +
+                    (uint64(playerReferralCount[topScores[i].player]) * 100);
+                if (currentEffective < worstEffective) {
+                    worstEffective = currentEffective;
+                }
+            }
+            wouldMakeIt = effectiveScore > worstEffective;
         }
 
         if (!wouldMakeIt) return (false, 0);
 
-        // Find where it would rank based on effective score
-        for (uint8 i = 0; i < leaderboardSize; ++i) {
-            uint64 currentEffectiveScore = leaderboard[i].score +
-                (uint64(playerReferralCount[leaderboard[i].player]) * 100);
+        // Find where it would rank based on effective score in cached leaderboard
+        for (uint8 i = 0; i < cachedLeaderboardSize; ++i) {
+            uint64 currentEffectiveScore = cachedLeaderboard[i].score +
+                (uint64(playerReferralCount[cachedLeaderboard[i].player]) *
+                    100);
             if (effectiveScore > currentEffectiveScore) {
                 return (true, i + 1);
             }
         }
 
         // If we get here, it goes at the end
-        return (true, leaderboardSize + 1);
+        return (true, cachedLeaderboardSize + 1);
     }
 
     /// @notice Get recent activity (last N submissions from leaderboard)
@@ -325,21 +415,21 @@ contract StarshipTroopersLeaderboard {
     function getRecentActivity(
         uint8 count
     ) external view returns (ScoreEntry[] memory recent) {
-        if (count == 0 || leaderboardSize == 0) {
+        if (count == 0 || topScoresCount == 0) {
             return new ScoreEntry[](0);
         }
 
-        uint8 actualCount = count > leaderboardSize ? leaderboardSize : count;
+        uint8 actualCount = count > topScoresCount ? topScoresCount : count;
 
         // Create array of all entries with timestamps
-        ScoreEntry[] memory temp = new ScoreEntry[](leaderboardSize);
-        for (uint8 i = 0; i < leaderboardSize; ++i) {
-            temp[i] = leaderboard[i];
+        ScoreEntry[] memory temp = new ScoreEntry[](topScoresCount);
+        for (uint8 i = 0; i < topScoresCount; ++i) {
+            temp[i] = topScores[i];
         }
 
         // Simple bubble sort by timestamp (desc) - acceptable for small arrays
-        for (uint8 i = 0; i < leaderboardSize - 1; ++i) {
-            for (uint8 j = 0; j < leaderboardSize - i - 1; ++j) {
+        for (uint8 i = 0; i < topScoresCount - 1; ++i) {
+            for (uint8 j = 0; j < topScoresCount - i - 1; ++j) {
                 if (temp[j].timestamp < temp[j + 1].timestamp) {
                     ScoreEntry memory swap = temp[j];
                     temp[j] = temp[j + 1];
@@ -368,12 +458,12 @@ contract StarshipTroopersLeaderboard {
     {
         uint256 sum = 0;
 
-        for (uint8 i = 0; i < leaderboardSize; ++i) {
-            if (leaderboard[i].level >= targetLevel) {
+        for (uint8 i = 0; i < topScoresCount; ++i) {
+            if (topScores[i].level >= targetLevel) {
                 playerCount++;
-                sum += leaderboard[i].score;
-                if (leaderboard[i].score > highestScore) {
-                    highestScore = leaderboard[i].score;
+                sum += topScores[i].score;
+                if (topScores[i].score > highestScore) {
+                    highestScore = topScores[i].score;
                 }
             }
         }
@@ -402,5 +492,19 @@ contract StarshipTroopersLeaderboard {
     ) external view returns (uint64 effectiveScore) {
         ScoreEntry memory best = playerBest[player];
         return best.score + (uint64(playerReferralCount[player]) * 100);
+    }
+
+    /* ----------  MAINTENANCE FUNCTIONS  ---------- */
+
+    /// @notice Force a full leaderboard rebuild (can be called by anyone)
+    function forceLeaderboardUpdate() external {
+        _sortLeaderboard();
+        leaderboardNeedsUpdate = false;
+    }
+
+    /// @notice Check if leaderboard needs updating
+    /// @return needsUpdate Whether the cached leaderboard is stale
+    function leaderboardStatus() external view returns (bool needsUpdate) {
+        return leaderboardNeedsUpdate;
     }
 }

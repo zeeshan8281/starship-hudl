@@ -1,5 +1,5 @@
 // utils/constants.ts
-export const CONTRACT_ADDRESS = "0x2fCA448814b5A10c99dBB3FC99B1EfD342e10a30" as `0x${string}`
+export const CONTRACT_ADDRESS = "0x44197BB36732103FeD8adA04b2fF9cC528757B54" as `0x${string}`
 
 export const GAME_CONFIG = {
   CANVAS_WIDTH: 800,
