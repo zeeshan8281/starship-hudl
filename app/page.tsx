@@ -1,7 +1,7 @@
 "use client"
 
-import Component from "../space-shooter-game"
+import StarshipTroopers from "./components/StarshipTroopers"
 
 export default function Page() {
-  return <Component />
+  return <StarshipTroopers />
 }
