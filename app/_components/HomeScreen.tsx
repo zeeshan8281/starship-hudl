@@ -107,23 +107,22 @@ export default function HomeScreen({
                         <Wallet className="w-3 h-3 mr-1" />
                         {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
                       </Badge>
-                      
-                      {/* Enhanced user stats display */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {playerStats.bestScore > 0 && (
-                          <Badge className="bg-yellow-600 text-white font-mono text-xs">
+                      {playerStats.bestScore > 0 && (
+                        <div className="flex justify-center mt-2">
+                          <Badge className="bg-yellow-600 text-white font-mono text-xs px-6 py-2">
                             <Trophy className="w-3 h-3 mr-1" />
                             BEST: {playerStats.bestScore.toLocaleString()}
                           </Badge>
-                        )}
-                        
+                        </div>
+                      )}
+                      {/* Enhanced user stats display */}
+                      <div className="grid grid-cols-2 gap-2">
                         {playerStats.referralCount > 0 && (
                           <Badge className="bg-purple-600 text-white font-mono text-xs">
                             <Users className="w-3 h-3 mr-1" />
                             {playerStats.referralCount} REFS
                           </Badge>
                         )}
-                        
                         {playerStats.effectiveScore > playerStats.bestScore && (
                           <Badge className="bg-gradient-to-r from-purple-600 to-yellow-600 text-white font-mono text-xs col-span-2">
                             <Gift className="w-3 h-3 mr-1" />
