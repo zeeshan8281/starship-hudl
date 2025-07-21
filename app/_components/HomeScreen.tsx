@@ -8,7 +8,7 @@ import { Wallet, Play, Trophy, Users, Gift } from "lucide-react"
 import Image from "next/image"
 import Leaderboard from "./Leaderboard"
 import ReferralSystem from "./ReferralSystem"
-import { LeaderboardEntry, PlayerStats, GameStats, EffectiveScoreEntry } from "../types/game"
+import { LeaderboardEntry, PlayerStats, GameStats, EffectiveScoreEntry } from "../_types/game"
 
 interface HomeScreenProps {
   isLoggedIn: boolean

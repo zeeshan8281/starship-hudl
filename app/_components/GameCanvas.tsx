@@ -2,9 +2,9 @@
 "use client"
 
 import { MutableRefObject } from "react"
-import { useGameLoop } from "../hooks/useGameLoop"
-import { GameObject, Bullet, Enemy, Particle, GameState } from "../types/game"
-import { GAME_CONFIG } from "../utils/constants"
+import { useGameLoop } from "../_hooks/useGameLoop"
+import { GameObject, Bullet, Enemy, Particle, GameState } from "../_types/game"
+import { GAME_CONFIG } from "../_utils/constants"
 
 interface GameCanvasProps {
   gameState: GameState

@@ -1,8 +1,8 @@
 // hooks/useLeaderboard.ts (Optimized to use contract's effective scores)
 import { useState, useEffect } from "react"
-import { PlayerStats, GameStats } from "../types/game"
-import { CONTRACT_ADDRESS } from "../utils/constants"
-import { ABI } from "../utils/abi"
+import { PlayerStats, GameStats } from "../_types/game"
+import { CONTRACT_ADDRESS } from "../_utils/constants"
+import { ABI } from "../_utils/abi"
 
 // Interface matching the contract's EffectiveScoreEntry struct
 interface EffectiveScoreEntry {

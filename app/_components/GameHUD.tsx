@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Pause, Play, RotateCcw } from "lucide-react"
-import { GameState } from "../types/game"
+import { GameState } from "../_types/game"
 
 interface GameHUDProps {
   score: number

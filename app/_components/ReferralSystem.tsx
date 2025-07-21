@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Copy, Share2, Users, Gift, ExternalLink } from "lucide-react"
-import { PlayerStats } from "../types/game"
+import { PlayerStats } from "../_types/game"
 
 interface ReferralSystemProps {
   referralCode: string

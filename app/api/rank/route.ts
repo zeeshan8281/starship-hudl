@@ -1,8 +1,10 @@
-import { ABI } from "../../utils/abi"
-import { CONTRACT_ADDRESS } from "@/app/utils/constants"
+import { ABI } from "../../_utils/abi"
+import { CONTRACT_ADDRESS } from "@/app/_utils/constants"
 import { type NextRequest, NextResponse } from "next/server"
 import { createPublicClient, http } from "viem"
 import { huddle01Testnet } from "viem/chains"
+
+export const dynamic = 'force-dynamic'
 
 // Interface matching the contract's EffectiveScoreEntry struct
 interface EffectiveScoreEntry {
@@ -47,6 +49,7 @@ export async function GET(request: NextRequest) {
     const topScores = await publicClient.readContract({
       address: CONTRACT_ADDRESS,
       abi: ABI,
+      // @ts-ignore
       functionName: "getTop20",
       args: [],
     })
@@ -54,6 +57,7 @@ export async function GET(request: NextRequest) {
     console.log("Top 20 scores from contract:", topScores)
 
     // Convert the contract response to our interface
+    // @ts-ignore
     const leaderboard: EffectiveScoreEntry[] = topScores.map((entry: any, index: number) => ({
       player: entry.player.toLowerCase(),
       rawScore: Number(entry.rawScore),
@@ -91,6 +95,7 @@ export async function GET(request: NextRequest) {
           const playerRank = await publicClient.readContract({
             address: CONTRACT_ADDRESS,
             abi: ABI,
+            // @ts-ignore
             functionName: "getPlayerRank",
             args: [walletAddress as `0x${string}`],
           })

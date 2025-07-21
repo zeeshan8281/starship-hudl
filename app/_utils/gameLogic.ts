@@ -1,6 +1,6 @@
 // utils/gameLogic.ts
-import { GameObject, Enemy, Particle } from '../types/game'
-import { GAME_CONFIG } from '../utils/constants'
+import { GameObject, Enemy, Particle } from '../_types/game'
+import { GAME_CONFIG } from './constants'
 
 export const checkCollision = (obj1: GameObject, obj2: GameObject): boolean => {
   return (

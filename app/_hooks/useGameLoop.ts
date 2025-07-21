@@ -1,8 +1,8 @@
 // hooks/useGameLoop.ts
 import { useEffect, useRef, useCallback, MutableRefObject } from "react"
-import { GameObject, Bullet, Enemy, Particle, GameState } from "../types/game"
-import { checkCollision, createEnemy, drawStars, updateParticle } from "../utils/gameLogic"
-import { GAME_CONFIG, COLORS } from "../utils/constants"
+import { GameObject, Bullet, Enemy, Particle, GameState } from "../_types/game"
+import { checkCollision, createEnemy, drawStars, updateParticle } from "../_utils/gameLogic"
+import { GAME_CONFIG, COLORS } from "../_utils/constants"
 
 interface UseGameLoopProps {
   gameState: GameState

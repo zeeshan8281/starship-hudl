@@ -10,7 +10,7 @@ import GameHUD from "./GameHUD"
 import GameCanvas from "./GameCanvas"
 import GameOverlay from "./GameOverlay"
 import MiniLeaderboard from "./MiniLeaderboard"
-import { GameObject, Bullet, Enemy, Particle, GameState, LeaderboardEntry, PlayerStats, GameStats, EffectiveScoreEntry } from "../types/game"
+import { GameObject, Bullet, Enemy, Particle, GameState, LeaderboardEntry, PlayerStats, GameStats, EffectiveScoreEntry } from "../_types/game"
 
 interface GameScreenProps {
   // Game state

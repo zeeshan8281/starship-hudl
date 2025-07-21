@@ -1,7 +1,7 @@
 // hooks/useGame.ts
 import { useState, useRef, useCallback } from "react"
-import { GameObject, Bullet, Enemy, Particle, GameState, CurrentScreen } from "../types/game"
-import { createParticles } from "../utils/gameLogic"
+import { GameObject, Bullet, Enemy, Particle, GameState, CurrentScreen } from "../_types/game"
+import { createParticles } from "../_utils/gameLogic"
 
 export const useGame = () => {
   const [currentScreen, setCurrentScreen] = useState<CurrentScreen>("home")

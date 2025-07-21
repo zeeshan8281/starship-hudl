@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Trophy, Crown, Calendar, Users, Star, Gift } from "lucide-react"
-import { PlayerStats, GameStats } from "../types/game"
+import { PlayerStats, GameStats } from "../_types/game"
 
 interface EffectiveScoreEntry {
   player: string

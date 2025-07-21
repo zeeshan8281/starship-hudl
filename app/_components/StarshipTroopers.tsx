@@ -2,12 +2,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useWallet } from "../hooks/useWallet"
-import { useGame } from "../hooks/useGame"
-import { useLeaderboard } from "../hooks/useLeaderboard"
+import { useWallet } from "../_hooks/useWallet"
+import { useGame } from "../_hooks/useGame"
+import { useLeaderboard } from "../_hooks/useLeaderboard"
 import HomeScreen from "./HomeScreen"
 import GameScreen from "./GameScreen"
-import { LoginMethod } from "../types/game"
+import { LoginMethod } from "../_types/game"
 
 export default function StarshipTroopers() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
