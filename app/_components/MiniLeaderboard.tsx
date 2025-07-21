@@ -29,7 +29,7 @@ export default function MiniLeaderboard({
   gameStats 
 }: MiniLeaderboardProps) {
   return (
-    <Card className="bg-slate-800/50 border-blue-500/30 h-full">
+    <Card className="bg-slate-800/50 border-blue-500/30 h-full min-w-[480px] max-w-[600px] w-full ">
       <CardHeader>
         <CardTitle className="text-white font-mono flex items-center justify-between">
           <div className="flex items-center">
@@ -79,8 +79,8 @@ export default function MiniLeaderboard({
             <p>BE THE FIRST!</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {leaderboard.slice(0, 10).map((entry, index) => {
+          <div className="space-y-3 max-h-[420px] overflow-y-auto">
+            {leaderboard.slice(0, 5).map((entry, index) => {
               const isCurrentUser = entry.player.toLowerCase() === currentUserAddress.toLowerCase()
               const isChampion = entry.player.toLowerCase() === gameStats.champion.toLowerCase()
               const hasReferralBonus = entry.referralCount > 0
@@ -135,32 +135,58 @@ export default function MiniLeaderboard({
                 </div>
               )
             })}
-          </div>
-        )}
-
-        {/* Game Stats Footer */}
-        {gameStats.totalSubmissions > 0 && (
-          <div className="mt-4 pt-3 border-t border-slate-600">
-            <div className="text-center">
-              <div className="grid grid-cols-2 gap-2 text-xs font-mono text-slate-400">
-                <div>
-                  <p className="text-blue-400 font-bold">{gameStats.totalSubmissions.toLocaleString()}</p>
-                  <p>Total Scores</p>
+            {leaderboard.length > 5 && leaderboard.slice(5).map((entry, index) => {
+              const trueIndex = index + 5
+              const isCurrentUser = entry.player.toLowerCase() === currentUserAddress.toLowerCase()
+              const isChampion = entry.player.toLowerCase() === gameStats.champion.toLowerCase()
+              const hasReferralBonus = entry.referralCount > 0
+              
+              return (
+                <div
+                  key={trueIndex}
+                  className={`flex items-center justify-between p-3 rounded-lg opacity-80 hover:opacity-100 transition ${
+                    isCurrentUser
+                      ? "bg-yellow-900/30 border border-yellow-500/30"
+                      : "bg-slate-700/50"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-mono text-sm">
+                      {trueIndex === 0 ? <Crown className="w-4 h-4" /> : trueIndex + 1}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
+                        <p className="text-white font-mono text-xs">
+                          {`${entry.player.slice(0, 4)}...${entry.player.slice(-3)}`}
+                        </p>
+                        {isChampion && (
+                          <Star className="w-3 h-3 text-yellow-400" />
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
+                        <span>L{entry.level}</span>
+                        {hasReferralBonus && (
+                          <>
+                            <span>•</span>
+                            <span className="text-purple-400">{entry.referralCount} refs</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-yellow-400 font-mono text-sm font-bold">
+                      {entry.effectiveScore.toLocaleString()}
+                    </p>
+                    {hasReferralBonus && (
+                      <p className="text-xs text-purple-400 font-mono">
+                        +{entry.referralCount * 100}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-green-400 font-bold">{gameStats.averageTopScore.toLocaleString()}</p>
-                  <p>Avg Top 10</p>
-                </div>
-              </div>
-              {gameStats.champion && (
-                <div className="mt-2">
-                  <Badge className="bg-yellow-600 text-white font-mono text-xs">
-                    <Crown className="w-3 h-3 mr-1" />
-                    CHAMPION: {gameStats.champion.slice(0, 6)}...{gameStats.champion.slice(-4)}
-                  </Badge>
-                </div>
-              )}
-            </div>
+              )
+            })}
           </div>
         )}
       </CardContent>
