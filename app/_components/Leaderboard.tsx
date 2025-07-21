@@ -89,12 +89,12 @@ export default function Leaderboard({
             <p>BE THE FIRST TROOPER!</p>
           </div>
         ) : (
-          <div className="space-y-3 overflow-y-auto" style={{ maxHeight: '420px' }}>
+          <div className="space-y-3 max-h-[420px] overflow-y-auto">
             {leaderboard.slice(0, 5).map((entry, index) => {
-              // Only show 5 ranks at once, allow scroll for more
               const isCurrentUser = entry.player.toLowerCase() === currentUserAddress.toLowerCase()
               const isChampion = entry.player.toLowerCase() === gameStats.champion.toLowerCase()
               const hasReferralBonus = entry.referralCount > 0
+              
               return (
                 <div
                   key={index}
@@ -109,8 +109,8 @@ export default function Leaderboard({
                       {index === 0 ? <Crown className="w-4 h-4" /> : index + 1}
                     </div>
                     <div>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-white font-mono text-sm">
+                      <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
+                        <p className="text-white font-mono text-xs">
                           {entry.player.slice(0, 6)}...{entry.player.slice(-4)}
                         </p>
                         {isChampion && (
@@ -118,47 +118,37 @@ export default function Leaderboard({
                             CHAMPION
                           </Badge>
                         )}
-                        {hasReferralBonus && (
-                          <Badge className="bg-purple-600 text-white text-xs font-mono py-0 px-1">
-                            <Gift className="w-2 h-2 mr-1" />
-                            {entry.referralCount} REF
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
-                        <Calendar className="w-3 h-3" />
-                        <span>{new Date(entry.timestamp * 1000).toLocaleDateString()}</span>
-                        <span>•</span>
                         <span>LVL {entry.level}</span>
                         {hasReferralBonus && (
                           <>
                             <span>•</span>
-                            <span className="text-purple-400">Raw: {entry.rawScore.toLocaleString()}</span>
+                            <span className="text-purple-400">{entry.referralCount} REF</span>
                           </>
                         )}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    {/* Show only effective score prominently */}
-                    <p className="text-yellow-400 font-mono text-lg font-bold">
+                    <p className="text-yellow-400 font-mono text-sm font-bold">
                       {entry.effectiveScore.toLocaleString()}
                     </p>
                     {hasReferralBonus && (
                       <p className="text-xs text-purple-400 font-mono">
-                        +{entry.referralCount * 100} bonus
+                        +{entry.referralCount * 100}
                       </p>
                     )}
                   </div>
                 </div>
               )
             })}
-            {/* Show the rest of the leaderboard on scroll */}
             {leaderboard.length > 5 && leaderboard.slice(5).map((entry, index) => {
-              const trueIndex = index + 5;
+              const trueIndex = index + 5
               const isCurrentUser = entry.player.toLowerCase() === currentUserAddress.toLowerCase()
               const isChampion = entry.player.toLowerCase() === gameStats.champion.toLowerCase()
               const hasReferralBonus = entry.referralCount > 0
+              
               return (
                 <div
                   key={trueIndex}
@@ -173,8 +163,8 @@ export default function Leaderboard({
                       {trueIndex === 0 ? <Crown className="w-4 h-4" /> : trueIndex + 1}
                     </div>
                     <div>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-white font-mono text-sm">
+                      <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
+                        <p className="text-white font-mono text-xs">
                           {entry.player.slice(0, 6)}...{entry.player.slice(-4)}
                         </p>
                         {isChampion && (
@@ -182,35 +172,25 @@ export default function Leaderboard({
                             CHAMPION
                           </Badge>
                         )}
-                        {hasReferralBonus && (
-                          <Badge className="bg-purple-600 text-white text-xs font-mono py-0 px-1">
-                            <Gift className="w-2 h-2 mr-1" />
-                            {entry.referralCount} REF
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
-                        <Calendar className="w-3 h-3" />
-                        <span>{new Date(entry.timestamp * 1000).toLocaleDateString()}</span>
-                        <span>•</span>
                         <span>LVL {entry.level}</span>
                         {hasReferralBonus && (
                           <>
                             <span>•</span>
-                            <span className="text-purple-400">Raw: {entry.rawScore.toLocaleString()}</span>
+                            <span className="text-purple-400">{entry.referralCount} REF</span>
                           </>
                         )}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    {/* Show only effective score prominently */}
-                    <p className="text-yellow-400 font-mono text-lg font-bold">
+                    <p className="text-yellow-400 font-mono text-sm font-bold">
                       {entry.effectiveScore.toLocaleString()}
                     </p>
                     {hasReferralBonus && (
                       <p className="text-xs text-purple-400 font-mono">
-                        +{entry.referralCount * 100} bonus
+                        +{entry.referralCount * 100}
                       </p>
                     )}
                   </div>
